@@ -6,6 +6,8 @@ class BeliefBase:
     def __init__(self):
         # Initialize the knowledge base as an empty set
         self.knowledge_base = set()
+        # Initialize the priority dictionary to store the priority of each formula in the knowledge base
+        self.priority = {}
 
     def resolve(self, clause1, clause2):
         # Initialize a set to store the new clauses resulting from the resolution
@@ -85,7 +87,32 @@ class BeliefBase:
         # Check if a fact is in the knowledge base and return True or False accordingly
         return fact in self.knowledge_base
 
-    def tell(self, fact):
-        # Add a fact to the knowledge base and return the updated knowledge base
-        self.knowledge_base.add(fact)
+    def tell(self, fact, priority=0):
+        # Convert the fact to CNF
+        fact_cnf = to_cnf(fact)
+        # Add the fact in CNF form to the knowledge base
+        self.knowledge_base.add(fact_cnf)
+        # Set the priority of the fact
+        self.priority[fact_cnf] = priority
+        # Return the updated knowledge base
         return self.knowledge_base
+
+    def contract(self, fact):
+        # Convert the fact to CNF
+        fact_cnf = to_cnf(fact)
+        # If the fact is in the knowledge base, remove it and delete its priority entry
+        if fact_cnf in self.knowledge_base:
+            self.knowledge_base.remove(fact_cnf)
+            del self.priority[fact_cnf]
+        # Return the updated knowledge base
+        return self.knowledge_base
+    
+    def update_priority(self, fact, new_priority):
+        # Convert the fact to CNF
+        fact_cnf = to_cnf(fact)
+        # If the fact is in the knowledge base, update its priority
+        if fact_cnf in self.knowledge_base:
+            self.priority[fact_cnf] = new_priority
+        # Return the updated priority dictionary
+        return self.priority
+    
