@@ -1,19 +1,32 @@
 from sympy import symbols
 from sympy.logic.boolalg import to_cnf, Not, And, to_int_repr
-from test import *
+from beliefBase import *
+import numpy as np
 
-A, B, C, D = symbols('A B C D')
+def main():
+    # Define propositional symbols
+    A, B, C = symbols('A B C')
 
-formula1 = to_cnf(~(A | B) | D)
-formula2 = to_cnf(~(A | C) | B | ~D)
-formula3 = to_cnf(~(A | ~C) | B | ~ (D | ~A))
+    # Define example formulas
+    formula1 = to_cnf((A | B) & (~A | ~B))
+    formula2 = to_cnf(C | ~A)
+    formula3 = to_cnf(~C | B)
 
-kb = And(formula2, formula3)
-not_phi = to_cnf(Not(formula1))
+    # Create a BeliefBase instance and add the example formulas to the knowledge base
+    bb = BeliefBase()
+    bb.tell(formula1)
+    bb.tell(formula2)
+    bb.tell(formula3)
 
-bb = BeliefBase()
+    # DEBUG print the knowledge base
+    # print(f"Knowledge base: {bb.knowledge_base}")
 
+    # Define a formula to check if it is a logical consequence of the knowledge base
+    phi = to_cnf(A & B)
 
-bb.tell(formula2)
-bb.tell(formula3)
-bb.resolution(kb, phi=formula1, symbols=[A, B, C, D])
+    # Perform the resolution and print the result
+    result = bb.resolution(phi)
+    print(f"The formula '{phi}' is a logical consequence of the knowledge base: {result}")
+
+if __name__ == "__main__":
+    main()
