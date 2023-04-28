@@ -71,8 +71,10 @@ class Agent:
     def partial_meet_contraction(self, query):
         print('Contracting', self.knowledge_base, 'with', query)
         remainders = self.remainders(set_a=self.knowledge_base, phi=query)
-        self.knowledge_base = set.intersection(*[set(fs) for fs in remainders])
+        # self.knowledge_base = set.intersection(*[set(fs) for fs in remainders]) # doesn't always work
+        self.knowledge_base = set(remainders[0]) # testing purposes
         print('New knowledge base:', self.knowledge_base)
+        print()
 
     def partial_meet_contraction_samy(self, query):
         print('SAMYs METHOD: Contracting', self.knowledge_base, 'with', query)
@@ -85,6 +87,7 @@ class Agent:
                 new_knowledge_base.add(clause)
         self.knowledge_base = new_knowledge_base
         print('New knowledge base:', self.knowledge_base)
+        print()
 
     def revision(self, query):
         self.partial_meet_contraction(Not(query))
