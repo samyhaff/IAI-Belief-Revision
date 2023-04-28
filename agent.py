@@ -1,5 +1,6 @@
 from sympy import symbols, And, Or, Not
 from sympy.logic.boolalg import to_int_repr, to_cnf
+from sympy.logic import satisfiable
 from itertools import chain, combinations
 
 
@@ -13,6 +14,7 @@ class Agent:
         print('Adding', sentence)
         self.knowledge_base.add(sentence)
         print('New knowledge base:', self.knowledge_base)
+        return self.knowledge_base
 
     def ask(self, query):
         return self.resolution(query)
@@ -75,6 +77,7 @@ class Agent:
         self.knowledge_base = set(remainders[0]) # testing purposes
         print('New knowledge base:', self.knowledge_base)
         print()
+        return self.knowledge_base
 
     def partial_meet_contraction_samy(self, query):
         print('SAMYs METHOD: Contracting', self.knowledge_base, 'with', query)
@@ -94,19 +97,169 @@ class Agent:
         self.tell(query)
 
 
+    def Cn(self, s):
+        # Create an empty set for the closure
+        closure = set()
+
+        # For each formula in s, add it to the closure and check for its components
+        for formula in s:
+            print("Adding formula to closure:", formula)
+            closure.add(formula)
+            if isinstance(formula, And):
+                # If the formula is a conjunction, add its individual components to the closure
+                for arg in formula.args:
+                    print("Adding component of conjunction to closure:", arg)
+                    closure.add(arg)
+
+        # Generate all possible combinations of the closure
+        all_combinations = chain.from_iterable(combinations(closure, r) for r in range(len(closure) + 1))
+
+        for combination in all_combinations:
+            conjunction = And(*combination)
+            # If the conjunction is entailed by the knowledge base, add it to the closure
+            if self.ask(conjunction):
+                print("Adding entailed conjunction to closure:", conjunction)
+                closure.add(conjunction)
+
+            # Add disjunctions of negated literals if entailed by the knowledge base
+            negated_literals = [Not(literal) for literal in combination]
+            for neg_combination in chain.from_iterable(combinations(negated_literals, r) for r in range(len(negated_literals) + 1)):
+                disjunction = Or(*neg_combination)
+                if self.ask(disjunction):
+                    print("Adding entailed disjunction of negated literals to closure:", disjunction)
+                    closure.add(disjunction)
+
+        return closure
+    
+
+    """ If phi is not a tautology then phi is not in the 
+    closure of the knowledge base contracted with phi """
+    def test_success(self, phi):
+        # If phi is not a tautology (test if the negation of phi is unsatisfiable)
+        if not (not satisfiable(Not(phi))):
+            # Check if phi is in the closure of knowledge base contracted with phi
+            contracted = self.partial_meet_contraction(phi)
+            closure = self.Cn(contracted)
+            if phi in closure:
+                return False
+        return True
+
+
+    """ The contracted knowledge base is a subset of the original knowledge base """
+    def test_inclusion(self, phi):
+        contracted = self.partial_meet_contraction(phi)
+        return contracted.issubset(self.knowledge_base)
+
+
+    """ If phi is not in the closure of the knowledge base then the 
+    knowledge base contracted with phi is the original knowledge base """
+    def test_vacuity(self, phi):
+        original_knowledge_base = self.knowledge_base
+        closure = self.Cn(self.knowledge_base)
+        if phi not in closure:
+            contracted = self.partial_meet_contraction(phi)
+            return contracted == original_knowledge_base
+        return True
+
+
+    # consistency?
+    """ The original knowledge base is a subset of the result of
+    contracting it with phi and then expanding it with phi  """
+    def test_recovery(self, phi):
+        original_knowledge_base = self.knowledge_base
+        contracted = self.partial_meet_contraction(phi)
+        expanded = agent.tell(phi)
+
+        """ DEBUG """
+        # print("Original knowledge base:", original_knowledge_base)
+        # print("Contracted knowledge base:", contracted)
+        # print("Expanded knowledge base:", expanded)
+
+        return original_knowledge_base.issubset(expanded)
+
+
+    """ If phi and psi are equivalent then the knowledge base contracted 
+    with phi is equivalent to the knowledge base contracted with psi """
+    def test_extensionality(self, phi, psi):
+        original_knowledge_base = self.knowledge_base
+        if agent.equivalent(phi, psi):
+            contracted_phi = self.partial_meet_contraction(phi)
+
+            # Reset knowledge base
+            self.knowledge_base = original_knowledge_base
+
+            contracted_psi = self.partial_meet_contraction(psi)
+            return contracted_phi == contracted_psi
+        return True
+
+
+    # Not required by handout
+    def test_closure(self, phi):
+        contracted = self.partial_meet_contraction(phi)
+        return self.knowledge_base == self.Cn(contracted)
+
+
+    def equivalent(self, phi, psi):
+        # Two formulas are equivalent if their bi-conditional is a tautology
+        biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
+        return not satisfiable(Not(biconditional))
+
+        # Optional way to test tautology
+        # return self.ask(biconditional)
+    
+
 # tests
+# agent = Agent()
+# A, B, C = symbols('A B C')
+# agent.tell(And(A, B))
+# agent.tell(Or(A, B))
+# print('Does', agent.knowledge_base, 'entails', B, '?', agent.ask(B))
+# print('Does', agent.knowledge_base, 'entails', C, '?', agent.ask(C))
+# agent.partial_meet_contraction(B)
+
 agent = Agent()
 A, B, C = symbols('A B C')
 agent.tell(And(A, B))
-agent.tell(Or(A, B))
-print('Does', agent.knowledge_base, 'entails', B, '?', agent.ask(B))
-print('Does', agent.knowledge_base, 'entails', C, '?', agent.ask(C))
-agent.partial_meet_contraction(B)
-
-
-agent = Agent()
-A, B, C = symbols('A B C')
-agent.tell(And(A, B))
-agent.tell(Or(A, B))
-agent.partial_meet_contraction_samy(B)
+# agent.tell(A)
+# agent.tell(B)
+# agent.partial_meet_contraction_samy(B)
 # print(agent.knowledge_base)
+
+
+# test success
+# print(agent.test_success(A))
+
+
+# test inclusion
+# print(agent.test_inclusion(A))
+
+
+# test vacuity
+# print(agent.test_vacuity(A))
+# print(agent.test_vacuity(C))
+
+
+# test recovery (not working due to implementation of contraction)
+# print(agent.test_recovery(A))
+
+
+# test extensionality
+# original_knowledge_base = agent.knowledge_base
+
+# print(agent.test_extensionality(A, A))
+
+# # reset knowledge base
+# agent.knowledge_base = original_knowledge_base
+
+# print(agent.test_extensionality(A, B))
+
+
+# test equivalence
+# print(agent.equivalent(And(A, B), And(B, A)))
+
+
+# test Cn (consequences)
+# print(agent.knowledge_base)
+# s = set()
+# s.add(And(A, B))
+# print(agent.Cn(s))
