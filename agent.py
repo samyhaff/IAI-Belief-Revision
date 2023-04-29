@@ -95,41 +95,6 @@ class Agent:
     def revision(self, query):
         self.partial_meet_contraction(Not(query))
         self.tell(query)
-
-
-    def Cn(self, s):
-        # Create an empty set for the closure
-        closure = set()
-
-        # For each formula in s, add it to the closure and check for its components
-        for formula in s:
-            print("Adding formula to closure:", formula)
-            closure.add(formula)
-            if isinstance(formula, And):
-                # If the formula is a conjunction, add its individual components to the closure
-                for arg in formula.args:
-                    print("Adding component of conjunction to closure:", arg)
-                    closure.add(arg)
-
-        # Generate all possible combinations of the closure
-        all_combinations = chain.from_iterable(combinations(closure, r) for r in range(len(closure) + 1))
-
-        for combination in all_combinations:
-            conjunction = And(*combination)
-            # If the conjunction is entailed by the knowledge base, add it to the closure
-            if self.ask(conjunction):
-                print("Adding entailed conjunction to closure:", conjunction)
-                closure.add(conjunction)
-
-            # Add disjunctions of negated literals if entailed by the knowledge base
-            negated_literals = [Not(literal) for literal in combination]
-            for neg_combination in chain.from_iterable(combinations(negated_literals, r) for r in range(len(negated_literals) + 1)):
-                disjunction = Or(*neg_combination)
-                if self.ask(disjunction):
-                    print("Adding entailed disjunction of negated literals to closure:", disjunction)
-                    closure.add(disjunction)
-
-        return closure
     
 
     """ If phi is not a tautology then phi is not in the 
@@ -139,8 +104,7 @@ class Agent:
         if not (not satisfiable(Not(phi))):
             # Check if phi is in the closure of knowledge base contracted with phi
             contracted = self.partial_meet_contraction(phi)
-            closure = self.Cn(contracted)
-            if phi in closure:
+            if agent.entailment(contracted, phi):
                 return False
         return True
 
@@ -155,8 +119,7 @@ class Agent:
     knowledge base contracted with phi is the original knowledge base """
     def test_vacuity(self, phi):
         original_knowledge_base = self.knowledge_base
-        closure = self.Cn(self.knowledge_base)
-        if phi not in closure:
+        if not agent.entailment(self.knowledge_base, phi):
             contracted = self.partial_meet_contraction(phi)
             return contracted == original_knowledge_base
         return True
@@ -191,12 +154,6 @@ class Agent:
             contracted_psi = self.partial_meet_contraction(psi)
             return contracted_phi == contracted_psi
         return True
-
-
-    # Not required by handout
-    def test_closure(self, phi):
-        contracted = self.partial_meet_contraction(phi)
-        return self.knowledge_base == self.Cn(contracted)
 
 
     def equivalent(self, phi, psi):
@@ -256,10 +213,3 @@ agent.tell(And(A, B))
 
 # test equivalence
 # print(agent.equivalent(And(A, B), And(B, A)))
-
-
-# test Cn (consequences)
-# print(agent.knowledge_base)
-# s = set()
-# s.add(And(A, B))
-# print(agent.Cn(s))
