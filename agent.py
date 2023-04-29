@@ -32,11 +32,14 @@ class Agent:
         else:
             cnf = to_cnf(And(*knowledge_base, Not(query)))
         clauses = to_int_repr(cnf.args, cnf.free_symbols)
+        if isinstance(cnf, Or):
+            clauses = [set.union(*clauses)]
+        #print('Clauses:', clauses)
         clauses = set([frozenset(x) for x in clauses])
         new_clauses = set()
         while True:
             for clause1 in clauses:
-                for clause2 in clauses:
+                for clause2 in clauses - {clause1}:
                     resolvents = self.resolve(clause1, clause2)
                     if set() in resolvents:
                         return True
