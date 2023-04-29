@@ -13,18 +13,6 @@ class Agent:
             return expr,
         return set(expr.args)
 
-    def get_clauses_strange(self, expr):
-        if isinstance(expr, Or):
-            return {to_cnf(expr)}
-        if isinstance(expr, And):
-            return set(expr.args)
-        if isinstance(expr, sympy.Tuple):
-            return [expr]
-
-        # Symbol
-        return {expr}
-
-
     def tell(self, sentence):
         #print('Adding', sentence, 'as', to_cnf(sentence))
         #self.knowledge_base.add(to_cnf(sentence))
