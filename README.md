@@ -1,85 +1,71 @@
 # Belief Revision Agent
-## Output
-```
-Agent now beliefs that A & B
-Agent 's new knowledge base: [A & B]
-Agent now beliefs that A | B
-Agent 's new knowledge base: [A & B, A | B]
-Does [A & B, A | B] entails B ? True
-Does [A & B, A | B] entails C ? False
-Agent is revising [A & B, A | B] with ~B
-Agent 's new knowledge base after contraction: [A | B, A]
-Agent now beliefs that ~B
-Agent 's new knowledge base: [A | B, A, ~B]
-Agent 's updated knowledge base: [A | B, A, ~B]
 
-Agent now beliefs that p
-Agent 's new knowledge base: [p]
-Agent now beliefs that q
-Agent 's new knowledge base: [p, q]
-Agent now beliefs that r
-Agent 's new knowledge base: [p, q, r]
-Agent is revising [p, q, r] with ~(q | r)
-Agent 's new knowledge base after contraction: [p]
-Agent now beliefs that ~(q | r)
-Agent 's new knowledge base: [p, ~(q | r)]
-Agent 's updated knowledge base: [p, ~(q | r)]
+This project implements a belief revision agent that satisfies AGM postulates using propositional logic. The agent can add, revise, and query beliefs in its knowledge base. The code is written in Python and uses the Sympy library for logical expressions.
 
-Agent now beliefs that p
-Agent 's new knowledge base: [p]
-Agent now beliefs that q
-Agent 's new knowledge base: [p, q]
-Agent now beliefs that q | ~p
-Agent 's new knowledge base: [p, q, q | ~p]
-Agent is revising [p, q, q | ~p] with ~q
-Agent 's new knowledge base after contraction: [p]
-Agent now beliefs that ~q
-Agent 's new knowledge base: [p, ~q]
-Agent 's updated knowledge base: [p, ~q]
+## Requirements
 
-Agent now beliefs that q | ~p
-Agent 's new knowledge base: [q | ~p]
-Agent now beliefs that p
-Agent 's new knowledge base: [q | ~p, p]
-Agent now beliefs that q
-Agent 's new knowledge base: [q | ~p, p, q]
-Agent is revising [q | ~p, p, q] with ~q
-Agent 's new knowledge base after contraction: [q | ~p]
-Agent now beliefs that ~q
-Agent 's new knowledge base: [q | ~p, ~q]
-Agent 's updated knowledge base: [q | ~p, ~q]
+- Python 3.11
+- Sympy library (install via `pip install sympy`)
 
-Agent now beliefs that p
-Agent 's new knowledge base: [p]
-Agent now beliefs that q
-Agent 's new knowledge base: [p, q]
-Agent is revising [p, q] with ~q
-Agent 's new knowledge base after contraction: [p]
-Agent now beliefs that ~q
-Agent 's new knowledge base: [p, ~q]
-Agent 's updated knowledge base: [p, ~q]
+## Instructions
 
-Alice now beliefs that p
-Alice 's new knowledge base: [p]
-Alice now beliefs that q
-Alice 's new knowledge base: [p, q]
-Bob now beliefs that p
-Bob 's new knowledge base: [p]
-Bob now beliefs that (p | ~q) & (q | ~p)
-Bob 's new knowledge base: [p, (p | ~q) & (q | ~p)]
-Alice is revising [p, q] with ~p
-Alice 's new knowledge base after contraction: [q]
-Alice now beliefs that ~p
-Alice 's new knowledge base: [q, ~p]
-Alice 's updated knowledge base: [q, ~p]
-
-Bob is revising [p, (p | ~q) & (q | ~p)] with ~p
-Bob 's new knowledge base after contraction: [q | ~p, p | ~q]
-Bob now beliefs that ~p
-Bob 's new knowledge base: [q | ~p, p | ~q, ~p]
-Bob 's updated knowledge base: [q | ~p, p | ~q, ~p]
-
-
-Process finished with exit code 0
+When you run the `console.py` script, the agent will display the following instructions:
 
 ```
+Enter a prompt: 
+"i": Instructions 
+"r b": Revision of belief b 
+"a b": Ask if belief b is in the knowledge base 
+"agm postulate": Test AGM Postulates, where postulate is one of the following: 
+    "success", "inclusion", "vacuity", "consistency", "extensionality"
+"p": Print Knowledge Base 
+"q": Quit 
+
+NOTE: Beliefs must be entered in the form of sympy propositional logic. For example, "p & q" can be entered as "And(p, q)" or "p & q"
+```
+
+You can use the available prompts to interact with the agent:
+
+- `i`: Display the instructions again.
+- `r b`: Revise the agent's knowledge base with belief `b`.
+- `a b`: Ask the agent if belief `b` is in its knowledge base.
+- `agm postulate`: Test AGM postulates on the agent's revision operation.
+- `p`: Print the agent's current knowledge base.
+- `q`: Quit the program.
+
+## Example
+
+Here is an example of how to interact with the agent:
+
+```
+Enter a prompt: 
+r p & q
+
+Agent is revising [] with And(p, q)
+Agent 's new knowledge base after contraction: []
+Agent 's updated knowledge base: [And(p, q)]
+
+Enter a prompt: 
+r ~q
+
+Agent is revising [And(p, q)] with Not(q)
+Agent 's new knowledge base after contraction: [p]
+Agent 's updated knowledge base: [p, Not(q)]
+
+Enter a prompt: 
+a p
+
+b in knowledge set: True
+
+Enter a prompt: 
+p
+
+Knowledge Base:  [p, Not(q)]
+
+Enter a prompt: 
+q
+
+Quitting program
+```
+
+In this example, the agent revises its knowledge base with beliefs `p & q` and `~q`. It then answers a query about belief `p` and prints its current knowledge base. Finally, the agent quits the program.

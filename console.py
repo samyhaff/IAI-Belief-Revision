@@ -1,79 +1,66 @@
 from agent import Agent
-from sympy import symbols, And, Or, Not, Implies, parse_expr
-from sympy.logic.boolalg import to_int_repr, to_cnf
-from itertools import chain, combinations
-
-agent = Agent()
+from sympy import parse_expr
 
 def instructions():
-    print('Enter a prompt: ')
-    print('"i": Instructions ')
-    print('"r b": Revision of belief b ')
-    print('"c b": Partial Meet Contraction of belief b ')
-    print('"agm postulate": Test AGM Postulates, where postulate is one of the following: \n\t"success", "inclusion", "vacuity", "consistency", "extensionality"')
-    print('"p": Print Knowledge Base ')
-    print('"q": Quit ')
+    print('''Enter a prompt: 
+    "i": Instructions 
+    "r b": Revision of belief b 
+    "a b": Ask if belief b is in the knowledge base 
+    "agm postulate": Test AGM Postulates, where postulate is one of the following: 
+        "success", "inclusion", "vacuity", "consistency", "extensionality"
+    "p": Print Knowledge Base 
+    "q": Quit 
 
-    print('NOTE: Beliefs must be entered in the form of sympy propositional logic. For example, "p & q" is entered as "And(p, q)"')
+    NOTE: Beliefs must be entered in the form of sympy propositional logic. For example, "p & q" can be entered as "And(p, q)" or "p & q"''')
 
 
 if __name__ == '__main__':
-
-    prompt = "running"
+    agent = Agent()
 
     instructions()
 
-
-    while True:
-        
+    while True: 
         print('Enter a prompt: ')
         prompt = input().split(" ")
 
         if prompt[0] == "i":
             instructions()
+
+        elif prompt[0] == "a":
+            print("b in knowledge set:", agent.ask(parse_expr("".join(prompt[1:]))), '\n')
         
         elif prompt[0] == "r":
             print("".join(prompt[1:]))
             belief = "".join(prompt[1:])
             belief = parse_expr(belief)
-            agent.tell(belief)
-
-        elif prompt[0] == "c":
-            print("".join(prompt[1:]))
-            belief = "".join(prompt[1:])
-            belief = parse_expr(belief)
-            agent.partial_meet_contraction_samy(belief)
+            agent.revision(belief)
         
         elif prompt[0] == "agm":
             
             match prompt[1]:
                 case "success":
-                    print('agm')
-                    #print(f"Success: {agent.test_revision_success(phi)}")
+                    phi = parse_expr(input("Enter phi: "))
+                    print(f"Success: {agent.test_revision_success(phi)}")
                 case "inclusion":
-                    print('agm')
-                    #print(f"Inclusion: {agent.test_revision_inclusion(phi)}")
+                    phi = parse_expr(input("Enter phi: "))
+                    print(f"Inclusion: {agent.test_revision_inclusion(phi)}")
                 case "vacuity":
-                    print('agm')
-                    #print(f"Vacuity: {agent.test_revision_vacuity(phi)}")
+                    phi = parse_expr(input("Enter phi: "))
+                    print(f"Vacuity: {agent.test_revision_vacuity(phi)}")
                 case "consistency":
-                    print('agm')
-                    #print(f"Consistency: {agent.test_revision_consistency(phi)}")
+                    phi = parse_expr(input("Enter phi: "))
+                    print(f"Consistency: {agent.test_revision_consistency(phi)}")
                 case "extensionality":
-                    print('agm')
-                    #print(f"Extensionality: {agent.test_revision_extensionality(phi, psi)}")
+                    phi = parse_expr(input("Enter phi: "))
+                    psi = parse_expr(input("Enter psi: "))
+                    print(f"Extensionality: {agent.test_revision_extensionality(phi, psi)}")
                 case _:
                     print('Not a valid postulate. Enter "i" for instructions.')
         
         elif prompt[0] == "p":
-            print("Knowledge Base: " + agent.knowledge_base)
+            print("Knowledge Base: ", agent.knowledge_base)
         elif prompt[0] == "q":
             print('Quitting program')
             break
         else:
             print('Invalid prompt. Enter "i" for instructions.')
-
-
-
-    
-
