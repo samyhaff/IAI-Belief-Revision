@@ -64,11 +64,11 @@ class Agent:
             return set_a
 
         for i in range(1, len(set_a_list)):
-            to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)] 
-            for to_remove_formula in to_remove_formulas: 
+            to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
+            for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
                     if isinstance(to_remove_clause, sympy.Tuple):
-                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause.args) 
+                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause.args)
                     else:
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - {to_remove_clause}
                     if not self.entailment(knowledge_base=new_remainders, query=phi):
@@ -93,7 +93,7 @@ class Agent:
         self.revision(phi)
         return self.ask(phi)
 
-    """ The knowledge base revised with phi is a 
+    """ The knowledge base revised with phi is a
     subset of the knowledge base expanded with phi """
     def test_revision_inclusion(self, phi):
         original_knowledge_base = list(self.knowledge_base)
@@ -106,7 +106,7 @@ class Agent:
 
         return (set(revised)).issubset(set(expanded))
 
-    """ If the negation of phi is not in the knowledge base then the knowledge 
+    """ If the negation of phi is not in the knowledge base then the knowledge
     base revised with phi is the same as the knowledge base expanded with phi """
     def test_revision_vacuity(self, phi):
         if not self.ask(Not(phi)):
@@ -125,7 +125,7 @@ class Agent:
         self.revision(phi)
         return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
 
-    """ If phi and psi are equivalent then the knowledge base revised 
+    """ If phi and psi are equivalent then the knowledge base revised
     with phi is the same as the knowledge base revised with psi """
     def test_revision_extensionality(self, phi, psi):
         if self.equivalent(phi, psi):
@@ -142,19 +142,13 @@ class Agent:
 
             return contracted_phi == contracted_psi
         return True
-    
+
     def equivalent(self, phi, psi):
         # Two formulas are equivalent if their bi-conditional is a tautology
         biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
         return agent.entailment(set(), biconditional)
-    
-if __name__ == "__main__":
-    agent = Agent()
-    A, B, C = symbols('A B C')
-    print(agent.entailment(knowledge_base=None, query=Or(A, Not(A))))
-    agent = Agent()
-    print(agent.entailment(knowledge_base=None, query=And(A, Not(A))))
 
+if __name__ == "__main__":
     agent = Agent()
     A, B, C = symbols('A B C')
     agent.tell(And(A, B))
