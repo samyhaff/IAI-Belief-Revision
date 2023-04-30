@@ -74,11 +74,10 @@ Alice 's new knowledge base: [q, ~p]
 Alice 's updated knowledge base: [q, ~p]
 
 Bob is revising [p, (p | ~q) & (q | ~p)] with ~p
-fuck
-Bob 's new knowledge base after contraction: [p | ~q, q | ~p]
+Bob 's new knowledge base after contraction: [q | ~p, p | ~q]
 Bob now beliefs that ~p
-Bob 's new knowledge base: [p | ~q, q | ~p, ~p]
-Bob 's updated knowledge base: [p | ~q, q | ~p, ~p]
+Bob 's new knowledge base: [q | ~p, p | ~q, ~p]
+Bob 's updated knowledge base: [q | ~p, p | ~q, ~p]
 
 
 Process finished with exit code 0
