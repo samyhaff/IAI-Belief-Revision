@@ -20,6 +20,7 @@ class Agent:
         print(self.name, 'now beliefs that', sentence)
         self.knowledge_base.append(sentence)
         print(self.name, '\'s new knowledge base:', self.knowledge_base)
+        return list(self.knowledge_base)
 
     def ask(self, query):
         return self.resolution(query)
@@ -87,22 +88,23 @@ class Agent:
         remainders = self.remainders(set_a=self.knowledge_base, phi=query)
         self.knowledge_base = remainders
 
-    def partial_meet_contraction(self, query):
-        print('Contracting', self.knowledge_base, 'with', query)
-        remainders = self.remainders(set_a=self.knowledge_base, phi=query)
-        if len(remainders) > 0:
-            # self.knowledge_base = set.intersection(*[set(fs) for fs in remainders]) # doesn't always work
-            self.knowledge_base = set(remainders[0])  # testing purposes
+    # def partial_meet_contraction(self, query):
+    #     print('Contracting', self.knowledge_base, 'with', query)
+    #     remainders = self.remainders(set_a=self.knowledge_base, phi=query)
+    #     if len(remainders) > 0:
+    #         # self.knowledge_base = set.intersection(*[set(fs) for fs in remainders]) # doesn't always work
+    #         self.knowledge_base = set(remainders[0])  # testing purposes
+    #     return set(self.knowledge_base)
 
-    def partial_meet_contraction_samy(self, query):
-        new_knowledge_base = set()
-        clauses = to_cnf(And(*self.knowledge_base)).args
-        for clause in clauses:
-            clause_set = set()
-            clause_set.add(clause)
-            if not self.entailment(clause_set, query):
-                new_knowledge_base.add(clause)
-        self.knowledge_base = new_knowledge_base
+    # def partial_meet_contraction_samy(self, query):
+    #     new_knowledge_base = set()
+    #     clauses = to_cnf(And(*self.knowledge_base)).args
+    #     for clause in clauses:
+    #         clause_set = set()
+    #         clause_set.add(clause)
+    #         if not self.entailment(clause_set, query):
+    #             new_knowledge_base.add(clause)
+    #     self.knowledge_base = new_knowledge_base
 
     def revision(self, query, contraction_function):
         print(self.name, 'is revising', self.knowledge_base, 'with', query)
@@ -111,7 +113,134 @@ class Agent:
         self.tell(query)
         print(self.name, '\'s updated knowledge base:', self.knowledge_base)
         print()
+        return list(self.knowledge_base)
 
+    """ If phi is not a tautology then phi is not in the 
+    closure of the knowledge base contracted with phi """
+    def test_contraction_success(self, phi):
+        # If phi is not a tautology (test if the negation of phi is unsatisfiable)
+        # if not (not satisfiable(Not(phi))):
+        if not agent.entailment(set(), phi):
+            # Check if phi is in the closure of knowledge base contracted with phi
+            contracted = self.partial_meet_contraction(phi)
+            if agent.entailment(contracted, phi):
+                return False
+        return True
+
+
+    """ The contracted knowledge base is a subset of the original knowledge base """
+    def test_contraction_inclusion(self, phi):
+        contracted = self.partial_meet_contraction(phi)
+        return contracted.issubset(self.knowledge_base)
+
+
+    """ If phi is not in the closure of the knowledge base then the 
+    knowledge base contracted with phi is the original knowledge base """
+    def test_contraction_vacuity(self, phi):
+        original_knowledge_base = set(self.knowledge_base)
+        if not agent.entailment(self.knowledge_base, phi):
+            contracted = self.partial_meet_contraction(phi)
+            return contracted == original_knowledge_base
+        return True
+
+
+    # consistency?
+    """ The original knowledge base is a subset of the result of
+    contracting it with phi and then expanding it with phi  """
+    def test_contraction_recovery(self, phi):
+        original_knowledge_base = set(self.knowledge_base)
+        contracted = self.partial_meet_contraction(phi)
+        expanded = agent.tell(phi)
+
+        """ DEBUG """
+        # print("Original knowledge base:", original_knowledge_base)
+        # print("Contracted knowledge base:", contracted)
+        # print("Expanded knowledge base:", expanded)
+
+        return original_knowledge_base.issubset(expanded)
+
+
+    """ If phi and psi are equivalent then the knowledge base contracted 
+    with phi is equivalent to the knowledge base contracted with psi """
+    def test_contraction_extensionality(self, phi, psi):
+        original_knowledge_base = set(self.knowledge_base)
+        if agent.equivalent(phi, psi):
+            contracted_phi = self.partial_meet_contraction(phi)
+
+            # Reset knowledge base
+            self.knowledge_base = original_knowledge_base
+
+            contracted_psi = self.partial_meet_contraction(psi)
+            return contracted_phi == contracted_psi
+        return True
+
+
+    def equivalent(self, phi, psi):
+        # Two formulas are equivalent if their bi-conditional is a tautology
+        biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
+        return agent.entailment(set(), biconditional)
+
+
+    """ Phi is in the knowledge base after revision with phi """
+    def test_revision_success(self, phi):
+        self.revision(phi, self.contraction)
+        return self.ask(phi)
+
+
+    """ The knowledge base revised with phi is a 
+    subset of the knowledge base expanded with phi """
+    def test_revision_inclusion(self, phi):
+        original_knowledge_base = list(self.knowledge_base)
+        revised = self.revision(phi, self.contraction)
+
+        # Reset knowledge base
+        self.knowledge_base = original_knowledge_base
+
+        expanded = agent.tell(phi)
+
+        return (set(revised)).issubset(set(expanded))
+
+
+    """ If the negation of phi is not in the knowledge base then the knowledge 
+    base revised with phi is the same as the knowledge base expanded with phi """
+    def test_revision_vacuity(self, phi):
+        if not self.ask(Not(phi)):
+            original_knowledge_base = list(self.knowledge_base)
+            revised = self.revision(phi, self.contraction)
+
+            # Reset knowledge base
+            self.knowledge_base = original_knowledge_base
+
+            expanded = agent.tell(phi)
+            return revised == expanded
+        return True
+
+
+    """ The knowledge base revised with phi is consistent if phi is consistent """
+    def test_revision_consistency(self, phi):
+        self.revision(phi, self.contraction)
+        return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
+
+
+    """ If phi and psi are equivalent then the knowledge base revised 
+    with phi is the same as the knowledge base revised with psi """
+    def test_revision_extensionality(self, phi, psi):
+        if self.equivalent(phi, psi):
+            original_knowledge_base = list(self.knowledge_base)
+
+            self.revision(phi, self.contraction)
+            contracted_phi = list(self.knowledge_base)
+
+            # Reset knowledge base
+            self.knowledge_base = list(original_knowledge_base)
+
+            self.revision(psi, self.contraction)
+            contracted_psi = list(self.knowledge_base)
+
+            return contracted_phi == contracted_psi
+        return True
+    
+    
 
 # tests
 agent = Agent()
@@ -172,5 +301,18 @@ bob.tell(And(
 alice.revision(Not(p), alice.contraction)
 bob.revision(Not(p), bob.contraction)
 
+# AGM tests
+agent = Agent()
+A, B = symbols("A B")
+agent.tell(And(A, B))
+# agent.tell(Or(A, B))
 
+phi = A
+psi = B
 
+# Test the AGM postulates
+print(f"> Success: {agent.test_revision_success(phi)}")
+print(f"> Inclusion: {agent.test_revision_inclusion(phi)}")
+print(f"> Vacuity: {agent.test_revision_vacuity(phi)}")
+print(f"> Consistency: {agent.test_revision_consistency(phi)}")
+print(f"> Extensionality: {agent.test_revision_extensionality(phi, psi)}")
