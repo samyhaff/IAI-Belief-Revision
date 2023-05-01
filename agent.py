@@ -17,11 +17,9 @@ class Agent:
         return set(expr.args)
 
     def tell(self, sentence):
-        # print('Adding', sentence, 'as', to_cnf(sentence))
-        # self.knowledge_base.add(to_cnf(sentence))
-        print(self.name, 'now beliefs that', sentence)
-        self.knowledge_base.append(sentence)
-        print(self.name, '\'s new knowledge base:', self.knowledge_base)
+        if sentence not in self.knowledge_base:
+            self.knowledge_base.append(sentence)
+        return list(self.knowledge_base)
 
     def ask(self, query):
         return self.resolution(query)
@@ -45,7 +43,6 @@ class Agent:
         clauses = to_int_repr(cnf.args, cnf.free_symbols)
         if isinstance(cnf, Or):
             clauses = [set.union(*clauses)]
-        # print('Clauses:', clauses)
         clauses = set([frozenset(x) for x in clauses])
         new_clauses = set()
         while True:
@@ -63,10 +60,7 @@ class Agent:
         return self.resolution(query=query, knowledge_base=knowledge_base)
 
     def remainders(self, set_a, phi):
-        # set_a = to_cnf(And(*set_a)) # change the order of the KB, so we are losing the temporal order of the formula
-        # set_a_list = set_a.args
         set_a_list = set_a
-        # remainders = set(copy.deepcopy(set_a_list))
 
         if not self.entailment(knowledge_base=set_a, query=phi):
             return set_a
@@ -89,30 +83,38 @@ class Agent:
         remainders = self.remainders(set_a=self.knowledge_base, phi=query)
         self.knowledge_base = remainders
 
-    def partial_meet_contraction(self, query):
-        print('Contracting', self.knowledge_base, 'with', query)
-        remainders = self.remainders(set_a=self.knowledge_base, phi=query)
-        if len(remainders) > 0:
-            # self.knowledge_base = set.intersection(*[set(fs) for fs in remainders]) # doesn't always work
-            self.knowledge_base = set(remainders[0])  # testing purposes
-
-    def partial_meet_contraction_samy(self, query):
-        new_knowledge_base = set()
-        clauses = to_cnf(And(*self.knowledge_base)).args
-        for clause in clauses:
-            clause_set = set()
-            clause_set.add(clause)
-            if not self.entailment(clause_set, query):
-                new_knowledge_base.add(clause)
-        self.knowledge_base = new_knowledge_base
-
-    def revision(self, query, contraction_function):
+    def revision(self, query):
         print(self.name, 'is revising', self.knowledge_base, 'with', query)
-        contraction_function(Not(query))
+        self.contraction(Not(query))
         print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
         self.tell(query)
-        print(self.name, '\'s updated knowledge base:', self.knowledge_base)
-        print()
+        print(self.name, '\'s updated knowledge base:', self.knowledge_base, "\n")
+        return list(self.knowledge_base)
+
+    """ Phi is in the knowledge base after revision with phi """
+    def test_revision_success(self, phi):
+        self.revision(phi)
+        return self.ask(phi)
+
+    """ The knowledge base revised with phi is a
+    subset of the knowledge base expanded with phi """
+    def test_revision_inclusion(self, phi):
+        original_knowledge_base = list(self.knowledge_base)
+        revised = self.revision(phi)
+
+        # Reset knowledge base
+        self.knowledge_base = original_knowledge_base
+
+        expanded = agent.tell(phi)
+
+        return (set(revised)).issubset(set(expanded))
+
+    """ If the negation of phi is not in the knowledge base then the knowledge
+    base revised with phi is the same as the knowledge base expanded with phi """
+    def test_revision_vacuity(self, phi):
+        if not self.ask(Not(phi)):
+            original_knowledge_base = list(self.knowledge_base)
+            revised = self.revision(phi)
 
     def play_mastermind(self):
         num_possible_digits=6
@@ -125,69 +127,100 @@ class Agent:
         self.tell()
 
         while True:
+    """ The knowledge base revised with phi is consistent if phi is consistent """
+    def test_revision_consistency(self, phi):
+        self.revision(phi)
+        return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
 
 
+    """ If phi and psi are equivalent then the knowledge base revised
+    with phi is the same as the knowledge base revised with psi """
+    def test_revision_extensionality(self, phi, psi):
+        if self.equivalent(phi, psi):
+            original_knowledge_base = list(self.knowledge_base)
 
+            self.revision(phi)
+            contracted_phi = list(self.knowledge_base)
 
+            # Reset knowledge base
+            self.knowledge_base = list(original_knowledge_base)
 
-# tests
-agent = Agent()
-A, B, C = symbols('A B C')
-print(agent.entailment(knowledge_base=None, query=Or(A, Not(A))))
-agent = Agent()
-print(agent.entailment(knowledge_base=None, query=And(A, Not(A))))
+            self.revision(psi)
+            contracted_psi = list(self.knowledge_base)
 
-agent = Agent()
-A, B, C = symbols('A B C')
-agent.tell(And(A, B))
-agent.tell(Or(A, B))
-print('Does', agent.knowledge_base, 'entails', B, '?', agent.ask(B))
-print('Does', agent.knowledge_base, 'entails', C, '?', agent.ask(C))
-agent.revision(Not(B), contraction_function=agent.contraction)
+            return contracted_phi == contracted_psi
+        return True
 
-agent = Agent()
-p, q, r = symbols('p q r')
-agent.tell(p)
-agent.tell(q)
-agent.tell(r)
-agent.revision(Not(Or(q, r)), contraction_function=agent.contraction)
+    def equivalent(self, phi, psi):
+        # Two formulas are equivalent if their bi-conditional is a tautology
+        biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
+        return agent.entailment(set(), biconditional)
 
-agent = Agent()
-p, q = symbols('p q')
-agent.tell(p)
-agent.tell(q)
-agent.tell(Or(Not(p), q))
-agent.revision(Not(q), contraction_function=agent.contraction)
+if __name__ == "__main__":
+    agent = Agent()
+    A, B, C = symbols('A B C')
+    agent.tell(And(A, B))
+    agent.tell(Or(A, B))
+    print('Does', agent.knowledge_base, 'entails', B, '?', agent.ask(B))
+    print('Does', agent.knowledge_base, 'entails', C, '?', agent.ask(C))
+    agent.revision(Not(B))
 
-agent = Agent()
-p, q = symbols('p q')
-agent.tell(Or(Not(p), q))
-agent.tell(p)
-agent.tell(q)
-agent.revision(Not(q), contraction_function=agent.contraction)
+    agent = Agent()
+    p, q, r = symbols('p q r')
+    agent.tell(p)
+    agent.tell(q)
+    agent.tell(r)
+    agent.revision(Not(Or(q, r)))
 
-agent = Agent()
-p, q = symbols('p q')
-agent.tell(p)
-agent.tell(q)
-agent.revision(Not(q), contraction_function=agent.contraction)
+    agent = Agent()
+    p, q = symbols('p q')
+    agent.tell(p)
+    agent.tell(q)
+    agent.tell(Or(Not(p), q))
+    agent.revision(Not(q))
 
-alice = Agent("Alice")
-p, q = symbols('p q')
-alice.tell(p)
-alice.tell(q)
+    agent = Agent()
+    p, q = symbols('p q')
+    agent.tell(Or(Not(p), q))
+    agent.tell(p)
+    agent.tell(q)
+    agent.revision(Not(q))
 
-bob = Agent("Bob")
-p, q = symbols('p q')
-bob.tell(p)
-bob.tell(And(
-    Or(Not(p), q),
-    Or(Not(q), p)
+    agent = Agent()
+    p, q = symbols('p q')
+    agent.tell(p)
+    agent.tell(q)
+    agent.revision(Not(q))
+
+    alice = Agent("Alice")
+    p, q = symbols('p q')
+    alice.tell(p)
+    alice.tell(q)
+
+    bob = Agent("Bob")
+    p, q = symbols('p q')
+    bob.tell(p)
+    bob.tell(And(
+        Or(Not(p), q),
+        Or(Not(q), p)
+        )
     )
-)
 
-alice.revision(Not(p), alice.contraction)
-bob.revision(Not(p), bob.contraction)
+    alice.revision(Not(p))
+    bob.revision(Not(p))
 
+    # AGM tests
+    agent = Agent()
+    A, B = symbols("A B")
+    agent.tell(And(A, B))
+    # agent.tell(Or(A, B))
 
+    phi = A
+    psi = B
 
+    # Test the AGM postulates
+    print(f"> Success: {agent.test_revision_success(phi)}")
+    print(f"> Inclusion: {agent.test_revision_inclusion(phi)}")
+    print(f"> Vacuity: {agent.test_revision_vacuity(phi)}")
+    print(f"> Consistency: {agent.test_revision_consistency(phi)}")
+    print(f"> Extensionality: {agent.test_revision_extensionality(phi, psi)}")
