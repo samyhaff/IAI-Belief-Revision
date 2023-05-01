@@ -84,12 +84,19 @@ class Agent:
         self.knowledge_base = remainders
 
     def revision(self, query, test=True):
-        original_knowledge_base = self.knowledge_base
+        original_knowledge_base = self.knowledge_base.copy()
         print(self.name, 'is revising', original_knowledge_base, 'with', query)
+        # With this check, test_revision_success is not fulfilled
+        #if self.is_consistent(query):
+        #    self.contraction(Not(query))
+        #    print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
+        #    self.tell(query)
+
         self.contraction(Not(query))
         print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
         self.tell(query)
-        revised_knowledge_base = self.knowledge_base
+
+        revised_knowledge_base = self.knowledge_base.copy()
         print(self.name, '\'s updated knowledge base:', revised_knowledge_base, "\n")
 
         if test is True:
@@ -149,10 +156,17 @@ class Agent:
     """ The knowledge base revised with phi is consistent if phi is consistent """
     def test_revision_consistency(self, phi, revision_result=None):
         if revision_result is not None:
-            return not self.resolution(query=And(Not(And(*revision_result)), And(*revision_result)), knowledge_base=revision_result)
+            if self.is_consistent(phi):
+                return self.is_consistent(And(*revision_result))
+            return True
 
         self.revision(phi, test=False)
         return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
+
+
+    def is_consistent(self, phi):
+        phi_list = self.get_clauses(to_cnf(phi))
+        return not self.resolution(query=And(Not(And(*phi_list)), And(*phi_list)), knowledge_base=phi_list)
 
 
     """ If phi and psi are equivalent then the knowledge base revised
@@ -163,11 +177,12 @@ class Agent:
                 # Create a semantically equal formula
                 psi = to_cnf(And(*phi.args, phi.args[-1]))
             if self.equivalent(phi, psi):
-                original_knowledge_base = to_cnf(And(*original_knowledge_base))
-
                 agent_psi = Agent()
-                agent_psi.tell(original_knowledge_base)
-                revision_result_psi = agent_psi.revision(psi)
+                if len(original_knowledge_base) > 0:
+                    original_knowledge_base = to_cnf(And(*original_knowledge_base))
+                    agent_psi.tell(original_knowledge_base)
+
+                revision_result_psi = agent_psi.revision(psi, test=False) # To avoid infinite recursion
 
                 contracted_phi = to_cnf(And(*revision_result_phi), simplify=True)
                 contracted_psi = to_cnf(And(*revision_result_psi), simplify=True)
@@ -201,6 +216,12 @@ class Agent:
         return self.entailment(set(), biconditional)
 
 if __name__ == "__main__":
+    agent = Agent()
+    A, B, C = symbols('A B C')
+    agent.revision(Or(A, And(B, Not(C))))
+    agent.revision(And(A, Not(A)))
+
+
     agent = Agent()
     A, B, C = symbols('A B C')
     agent.tell(And(A, B))

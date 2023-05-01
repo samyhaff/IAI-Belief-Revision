@@ -30,7 +30,7 @@ if __name__ == '__main__':
             print("b in knowledge set:", agent.ask(parse_expr("".join(prompt[1:]))), '\n')
         
         elif prompt[0] == "r":
-            print("".join(prompt[1:]))
+            #print("".join(prompt[1:]))
             belief = "".join(prompt[1:])
             belief = parse_expr(belief)
             agent.revision(belief)
