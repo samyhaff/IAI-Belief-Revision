@@ -1,10 +1,7 @@
 import sympy
-from sympy import symbols, And, Or, Not
+from sympy import symbols, And, Or, Not, Xor, Implies
 from sympy.logic.boolalg import to_int_repr, to_cnf
 from itertools import combinations
-
-import mastermind
-
 
 class Agent:
     def __init__(self, name="Agent"):
@@ -35,6 +32,7 @@ class Agent:
                     resolvents.add(frozenset(new_clause))
         return resolvents
 
+    #TODO to improve
     def resolution(self, query, knowledge_base=None):
         if knowledge_base is None:
             cnf = to_cnf(And(*self.knowledge_base, Not(query)))
@@ -62,10 +60,11 @@ class Agent:
     def remainders(self, set_a, phi):
         set_a_list = set_a
 
-        if not self.entailment(knowledge_base=set_a, query=phi):
+        if not self.entailment(knowledge_base=set_a, query=phi): # here phi is actually Not(phi) since it's called by contraction(Not(Phi)), which is called by revision(phi)
             return set_a
 
         for i in range(1, len(set_a_list)):
+            # trying to discard before the first added formulas/clauses
             to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
             for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
@@ -82,24 +81,41 @@ class Agent:
         remainders = self.remainders(set_a=self.knowledge_base, phi=query)
         self.knowledge_base = remainders
 
-    def revision(self, query):
-        print(self.name, 'is revising', self.knowledge_base, 'with', query)
+    def revision(self, query, test=True):
+        original_knowledge_base = self.knowledge_base
+        print(self.name, 'is revising', original_knowledge_base, 'with', query)
         self.contraction(Not(query))
         print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
         self.tell(query)
-        print(self.name, '\'s updated knowledge base:', self.knowledge_base, "\n")
+        revised_knowledge_base = self.knowledge_base
+        print(self.name, '\'s updated knowledge base:', revised_knowledge_base, "\n")
+
+        if test is True:
+            assert self.test_revision_success(phi=query, revision_result=revised_knowledge_base)
+            assert self.test_revision_inclusion(phi=query, revision_result=revised_knowledge_base, original_knowledge_base=original_knowledge_base)
+            assert self.test_revision_vacuity(phi=query, revision_result=revised_knowledge_base, original_knowledge_base=original_knowledge_base)
+            assert self.test_revision_consistency(phi=query, revision_result=revised_knowledge_base)
+            assert self.test_revision_extensionality(phi=query, psi=None, revision_result_phi=revised_knowledge_base, original_knowledge_base=original_knowledge_base)
+
         return list(self.knowledge_base)
 
     """ Phi is in the knowledge base after revision with phi """
-    def test_revision_success(self, phi):
-        self.revision(phi)
+    def test_revision_success(self, phi, revision_result=None):
+        if revision_result is not None:
+            return self.resolution(query=phi, knowledge_base=revision_result)
+
+        self.revision(phi, test=False)
         return self.ask(phi)
 
     """ The knowledge base revised with phi is a
     subset of the knowledge base expanded with phi """
-    def test_revision_inclusion(self, phi):
+    def test_revision_inclusion(self, phi, revision_result=None, original_knowledge_base=None):
+        if revision_result is not None and original_knowledge_base is not None:
+            original_knowledge_base = to_cnf(And(*original_knowledge_base)).args
+            return (set(revision_result)).issubset(set(original_knowledge_base).union({phi}))
+
         original_knowledge_base = list(self.knowledge_base)
-        revised = self.revision(phi)
+        revised = self.revision(phi, test=False)
 
         # Reset knowledge base
         self.knowledge_base = original_knowledge_base
@@ -110,10 +126,16 @@ class Agent:
 
     """ If the negation of phi is not in the knowledge base then the knowledge
     base revised with phi is the same as the knowledge base expanded with phi """
-    def test_revision_vacuity(self, phi):
+    def test_revision_vacuity(self, phi, revision_result=None, original_knowledge_base=None):
+        if revision_result is not None and original_knowledge_base is not None:
+            original_knowledge_base = to_cnf(And(*original_knowledge_base)).args
+            if not self.resolution(query=Not(phi), knowledge_base=original_knowledge_base):
+                return set(revision_result) == (set(original_knowledge_base).union({phi}))
+            return True
+
         if not self.ask(Not(phi)):
             original_knowledge_base = list(self.knowledge_base)
-            revised = self.revision(phi)
+            revised = self.revision(phi, test=False)
 
             # Reset knowledge base
             self.knowledge_base = original_knowledge_base
@@ -123,27 +145,50 @@ class Agent:
         return True
 
     """ The knowledge base revised with phi is consistent if phi is consistent """
-    def test_revision_consistency(self, phi):
-        self.revision(phi)
+    def test_revision_consistency(self, phi, revision_result=None):
+        if revision_result is not None:
+            return not self.resolution(query=And(Not(And(*revision_result)), And(*revision_result)), knowledge_base=revision_result)
+
+        self.revision(phi, test=False)
         return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
+
 
     """ If phi and psi are equivalent then the knowledge base revised
     with phi is the same as the knowledge base revised with psi """
-    def test_revision_extensionality(self, phi, psi):
+    def test_revision_extensionality(self, phi, psi=None, revision_result_phi=None, original_knowledge_base=None):
+        if revision_result_phi is not None and original_knowledge_base is not None:
+            if psi is None:
+                # Create a semantically equal formula
+                psi = to_cnf(And(*phi.args, phi.args[-1]))
+            if self.equivalent(phi, psi):
+                original_knowledge_base = to_cnf(And(*original_knowledge_base))
+
+                agent_psi = Agent()
+                agent_psi.tell(original_knowledge_base)
+                revision_result_psi = agent_psi.revision(psi)
+
+                contracted_phi = to_cnf(And(*revision_result_phi), simplify=True)
+                contracted_psi = to_cnf(And(*revision_result_psi), simplify=True)
+
+                return contracted_phi == contracted_psi
+
+            return True
+
+
         if self.equivalent(phi, psi):
             original_knowledge_base = list(self.knowledge_base)
 
-            self.revision(phi)
+            self.revision(phi, test=False)
             contracted_phi = list(self.knowledge_base)
 
             # Reset knowledge base
             self.knowledge_base = list(original_knowledge_base)
 
-            self.revision(psi)
+            self.revision(psi, test=False)
             contracted_psi = list(self.knowledge_base)
 
-            contracted_phi = to_cnf(And(*contracted_phi)).simplify()
-            contracted_psi = to_cnf(And(*contracted_psi)).simplify()
+            contracted_phi = to_cnf(And(*contracted_phi), simplify=True)
+            contracted_psi = to_cnf(And(*contracted_psi), simplify=True)
 
             return contracted_phi == contracted_psi
         return True
@@ -204,12 +249,14 @@ if __name__ == "__main__":
     )
 
     alice.revision(Not(p))
+    print("Does Alice belief Not(q)?", alice.ask(Not(q)))
     bob.revision(Not(p))
+    print("Does Bob belief Not(q)?", bob.ask(Not(q)))
 
     # AGM tests
     agent = Agent()
     A, B = symbols("A B")
-    agent.tell(And(A, B))
+    agent.tell(Or(A, Not(B)))
     # agent.tell(Or(A, B))
 
     phi = A
