@@ -65,10 +65,14 @@ class Agent:
 
         for i in range(1, len(set_a_list)):
             to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
+            # Trying to remove before the first added formulas/clauses (or combination of them). 
+            # This is ensured by the order of the formulas in the list.
             for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
+                    # If we need to remove combination of clauses
                     if isinstance(to_remove_clause, sympy.Tuple):
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause.args)
+                    # If we need to remove one clause at a time
                     else:
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - {to_remove_clause}
                     if not self.entailment(knowledge_base=new_remainders, query=phi):
