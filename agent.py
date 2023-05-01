@@ -102,7 +102,7 @@ class Agent:
         # Reset knowledge base
         self.knowledge_base = original_knowledge_base
 
-        expanded = agent.tell(phi)
+        expanded = self.tell(phi)
 
         return (set(revised)).issubset(set(expanded))
 
@@ -116,7 +116,7 @@ class Agent:
             # Reset knowledge base
             self.knowledge_base = original_knowledge_base
 
-            expanded = agent.tell(phi)
+            expanded = self.tell(phi)
             return revised == expanded
         return True
 
