@@ -142,13 +142,16 @@ class Agent:
             self.revision(psi)
             contracted_psi = list(self.knowledge_base)
 
+            contracted_phi = to_cnf(And(*contracted_phi)).simplify()
+            contracted_psi = to_cnf(And(*contracted_psi)).simplify()
+
             return contracted_phi == contracted_psi
         return True
 
     def equivalent(self, phi, psi):
         # Two formulas are equivalent if their bi-conditional is a tautology
         biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
-        return agent.entailment(set(), biconditional)
+        return self.entailment(set(), biconditional)
 
 if __name__ == "__main__":
     agent = Agent()
