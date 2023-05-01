@@ -32,7 +32,6 @@ class Agent:
                     resolvents.add(frozenset(new_clause))
         return resolvents
 
-    #TODO to improve
     def resolution(self, query, knowledge_base=None):
         if knowledge_base is None:
             cnf = to_cnf(And(*self.knowledge_base, Not(query)))
