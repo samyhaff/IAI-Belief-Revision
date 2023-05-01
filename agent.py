@@ -66,9 +66,8 @@ class Agent:
             return set_a
 
         for i in range(1, len(set_a_list)):
-            to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list,
-                                                                                   i)]  # check if the order make sense (YES: it discard before the last added formulas/clause)
-            for to_remove_formula in reversed(to_remove_formulas):
+            to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
+            for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
                     if isinstance(to_remove_clause, sympy.Tuple):
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause.args)
@@ -105,7 +104,7 @@ class Agent:
         # Reset knowledge base
         self.knowledge_base = original_knowledge_base
 
-        expanded = agent.tell(phi)
+        expanded = self.tell(phi)
 
         return (set(revised)).issubset(set(expanded))
 
@@ -116,22 +115,17 @@ class Agent:
             original_knowledge_base = list(self.knowledge_base)
             revised = self.revision(phi)
 
-    def play_mastermind(self):
-        num_possible_digits=6
-        num_digits_to_guess=4
-        game = mastermind.Mastermind(num_possible_digits, num_digits_to_guess)
+            # Reset knowledge base
+            self.knowledge_base = original_knowledge_base
 
-        zero, one, two, three, four, five = symbols('zero, one, two, three, four, five')
-        p0, p1, p2, p3 = symbols('p0, p1, p2, p3')
+            expanded = self.tell(phi)
+            return revised == expanded
+        return True
 
-        self.tell()
-
-        while True:
     """ The knowledge base revised with phi is consistent if phi is consistent """
     def test_revision_consistency(self, phi):
         self.revision(phi)
         return not self.ask(And(Not(And(*self.knowledge_base)), And(*self.knowledge_base)))
-
 
     """ If phi and psi are equivalent then the knowledge base revised
     with phi is the same as the knowledge base revised with psi """
