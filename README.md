@@ -2,6 +2,10 @@
 
 This project implements a belief revision agent that satisfies AGM postulates using propositional logic. The agent can add, revise, and query beliefs in its knowledge base. The code is written in Python and uses the Sympy library for logical expressions.
 
+## TODOs
+- Remove the possibility of running AGM postulate tests from the console.py (and keep only the part that uses the belief set passed through the parameters);
+- Right it is possible to revise with inconsistent formula such as `And(A, Not(A))` and this will result in a new belief base containing only `And(A, Not(A))`.
+ 
 ## Requirements
 
 - Python 3.11
