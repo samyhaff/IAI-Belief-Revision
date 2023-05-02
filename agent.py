@@ -70,6 +70,8 @@ class Agent:
             # Trying to remove first the older formulas/clauses (or combination of them). 
             # This is ensured by the order of the formulas in the list.
             to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
+            # Trying to remove first the older formulas/clauses (or combination of them). 
+            # This is ensured by the order of the formulas in the list.
             for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
                     # If we need to remove combination of clauses
