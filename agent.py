@@ -66,7 +66,7 @@ class Agent:
         if not self.entailment(knowledge_base=set_a, query=phi): # here phi is actually Not(phi) since it's called by contraction(Not(Phi)), which is called by revision(phi)
             return set_a
 
-        for i in range(1, len(set_a_list)):
+        for i in range(1, len(set_a_list) + 1):
             # Trying to remove first the older formulas/clauses (or combination of them). 
             # This is ensured by the order of the formulas in the list.
             to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
@@ -74,7 +74,7 @@ class Agent:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
                     # If we need to remove combination of clauses
                     if isinstance(to_remove_clause, sympy.Tuple):
-                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause.args)
+                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(self.get_clauses(And(*to_remove_clause)))
                     # If we need to remove one clause at a time    
                     else:
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - {to_remove_clause}
@@ -183,12 +183,13 @@ class Agent:
         if revision_result_phi is not None and original_knowledge_base is not None:
             if psi is None:
                 # Create a semantically equal formula
-                psi = to_cnf(And(*phi.args, phi.args[-1]))
+                psi = to_cnf(And(phi, And(phi, phi)))
             if self.equivalent(phi, psi):
                 agent_psi = Agent()
                 if len(original_knowledge_base) > 0:
-                    original_knowledge_base = to_cnf(And(*original_knowledge_base))
-                    agent_psi.tell(original_knowledge_base)
+                    #original_knowledge_base = self.get_clauses(to_cnf(And(*original_knowledge_base)))
+                    for belief in original_knowledge_base:
+                        agent_psi.tell(belief)
 
                 revision_result_psi = agent_psi.revision(psi, test=False) # To avoid infinite recursion
 
@@ -228,6 +229,15 @@ if __name__ == "__main__":
     a, b, c = symbols('a b c')
     agent.revision(a | b >> c)
     agent.revision(a | c)
+    agent.revision(Not(a))
+    agent.revision(Not(c))
+
+    agent = Agent()
+    a, b, c = symbols('a b c')
+    agent.revision(a & b & c)
+    agent.revision(b | Not(c))
+    agent.revision(Not(b))
+
 
     agent = Agent()
     A, B, C = symbols('A B C')
