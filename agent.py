@@ -4,12 +4,19 @@ from sympy.logic.boolalg import to_int_repr, to_cnf
 from itertools import combinations
 
 class Agent:
-    def __init__(self, name="Agent"):
-        self.name = name
+    def __init__(self, name=None):
+        if name is None:
+            self.name = "Agent" + str(id(self))
+        else:
+            self.name = name
         self.knowledge_base = list()
 
     def get_clauses(self, expr):
         if not isinstance(expr, And):
+            if expr == True:
+                return {}
+            if isinstance(expr, Or) or isinstance(expr, Not):
+                return {expr}
             return expr,
         return set(expr.args)
 
@@ -19,7 +26,7 @@ class Agent:
         return list(self.knowledge_base)
 
     def ask(self, query):
-        return self.resolution(query)
+        return self.entailment(knowledge_base=self.knowledge_base, query=query)
 
     def resolve(self, clause1, clause2):
         resolvents = set()
@@ -32,14 +39,11 @@ class Agent:
                     resolvents.add(frozenset(new_clause))
         return resolvents
 
-    def resolution(self, query, knowledge_base=None):
-        if knowledge_base is None:
-            cnf = to_cnf(And(*self.knowledge_base, Not(query)))
-        else:
-            cnf = to_cnf(And(*knowledge_base, Not(query)))
-        clauses = to_int_repr(cnf.args, cnf.free_symbols)
-        if isinstance(cnf, Or):
-            clauses = [set.union(*clauses)]
+    def resolution(self, set_of_formulas):
+        cnf = to_cnf(And(*set_of_formulas))
+        clauses = to_int_repr(self.get_clauses(cnf), cnf.free_symbols)
+        #if isinstance(cnf, Or):
+        #    clauses = [set.union(*clauses)]
         clauses = set([frozenset(x) for x in clauses])
         new_clauses = set()
         while True:
@@ -54,7 +58,7 @@ class Agent:
             clauses |= new_clauses
 
     def entailment(self, knowledge_base, query):
-        return self.resolution(query=query, knowledge_base=knowledge_base)
+        return self.resolution(set(knowledge_base).union({Not(query)}))
 
     def remainders(self, set_a, phi):
         set_a_list = set_a
@@ -100,6 +104,7 @@ class Agent:
         print(self.name, '\'s updated knowledge base:', revised_knowledge_base, "\n")
 
         if test is True:
+            #query = self.get_clauses(to_cnf(query))
             assert self.test_revision_success(phi=query, revision_result=revised_knowledge_base)
             assert self.test_revision_inclusion(phi=query, revision_result=revised_knowledge_base, original_knowledge_base=original_knowledge_base)
             assert self.test_revision_vacuity(phi=query, revision_result=revised_knowledge_base, original_knowledge_base=original_knowledge_base)
@@ -111,7 +116,7 @@ class Agent:
     """ Phi is in the knowledge base after revision with phi """
     def test_revision_success(self, phi, revision_result=None):
         if revision_result is not None:
-            return self.resolution(query=phi, knowledge_base=revision_result)
+            return self.entailment(query=phi, knowledge_base=revision_result)
 
         self.revision(phi, test=False)
         return self.ask(phi)
@@ -120,8 +125,9 @@ class Agent:
     subset of the knowledge base expanded with phi """
     def test_revision_inclusion(self, phi, revision_result=None, original_knowledge_base=None):
         if revision_result is not None and original_knowledge_base is not None:
-            original_knowledge_base = to_cnf(And(*original_knowledge_base)).args
-            return (set(revision_result)).issubset(set(original_knowledge_base).union({phi}))
+            original_knowledge_base = self.get_clauses(to_cnf(And(*original_knowledge_base)))
+            revision_result = self.get_clauses(to_cnf(And(*revision_result)))
+            return set(revision_result).issubset(set(original_knowledge_base).union(self.get_clauses(to_cnf(phi))))
 
         original_knowledge_base = list(self.knowledge_base)
         revised = self.revision(phi, test=False)
@@ -137,9 +143,10 @@ class Agent:
     base revised with phi is the same as the knowledge base expanded with phi """
     def test_revision_vacuity(self, phi, revision_result=None, original_knowledge_base=None):
         if revision_result is not None and original_knowledge_base is not None:
-            original_knowledge_base = to_cnf(And(*original_knowledge_base)).args
-            if not self.resolution(query=Not(phi), knowledge_base=original_knowledge_base):
-                return set(revision_result) == (set(original_knowledge_base).union({phi}))
+            original_knowledge_base = self.get_clauses(to_cnf(And(*original_knowledge_base)))
+            revision_result = self.get_clauses(to_cnf(And(*revision_result)))
+            if not self.entailment(query=Not(phi), knowledge_base=original_knowledge_base):
+                return set(revision_result) == set(original_knowledge_base).union(self.get_clauses(to_cnf(phi)))
             return True
 
         if not self.ask(Not(phi)):
@@ -156,8 +163,8 @@ class Agent:
     """ The knowledge base revised with phi is consistent if phi is consistent """
     def test_revision_consistency(self, phi, revision_result=None):
         if revision_result is not None:
-            if self.is_consistent(phi):
-                return self.is_consistent(And(*revision_result))
+            if self.is_consistent({phi}):
+                return self.is_consistent(revision_result)
             return True
 
         self.revision(phi, test=False)
@@ -165,8 +172,9 @@ class Agent:
 
 
     def is_consistent(self, phi):
-        phi_list = self.get_clauses(to_cnf(phi))
-        return not self.resolution(query=And(Not(And(*phi_list)), And(*phi_list)), knowledge_base=phi_list)
+        #phi_list = self.get_clauses(to_cnf(phi))
+        return not self.resolution(phi)
+        #return not self.resolution(query=And(Not(And(*phi_list)), And(*phi_list)), knowledge_base=phi_list)
 
 
     """ If phi and psi are equivalent then the knowledge base revised
@@ -213,14 +221,19 @@ class Agent:
     def equivalent(self, phi, psi):
         # Two formulas are equivalent if their bi-conditional is a tautology
         biconditional = And(Or(Not(phi), psi), Or(Not(psi), phi))
-        return self.entailment(set(), biconditional)
+        return self.entailment(knowledge_base=set(), query=biconditional)
 
 if __name__ == "__main__":
+    agent = Agent()
+    a, b, c = symbols('a b c')
+    agent.revision(a | b >> c)
+    agent.revision(a | c)
+
     agent = Agent()
     A, B, C = symbols('A B C')
     agent.revision(Or(A, And(B, Not(C))))
     agent.revision(And(A, Not(A)))
-
+    agent.revision(A | B >> C)
 
     agent = Agent()
     A, B, C = symbols('A B C')
