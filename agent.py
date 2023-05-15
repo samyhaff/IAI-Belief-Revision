@@ -60,33 +60,36 @@ class Agent:
     def entailment(self, knowledge_base, query):
         return self.resolution(set(knowledge_base).union({Not(query)}))
 
-    def remainders(self, set_a, phi):
-        set_a_list = set_a
+    def remainders(self, set_a_list, phi, return_all=False):
+        return_remainders = list()
 
-        if not self.entailment(knowledge_base=set_a, query=phi): # here phi is actually Not(phi) since it's called by contraction(Not(Phi)), which is called by revision(phi)
-            return set_a
+        if not self.entailment(knowledge_base=set_a_list, query=phi): # here phi is actually Not(phi) since it's called by contraction(Not(Phi)), which is called by revision(phi)
+            return set_a_list
 
         for i in range(1, len(set_a_list) + 1):
             # Trying to remove first the older formulas/clauses (or combination of them). 
             # This is ensured by the order of the formulas in the list.
             to_remove_formulas = [x[0] if len(x) == 1 else x for x in combinations(set_a_list, i)]
-            # Trying to remove first the older formulas/clauses (or combination of them). 
-            # This is ensured by the order of the formulas in the list.
             for to_remove_formula in to_remove_formulas:
                 for to_remove_clause in self.get_clauses(to_cnf(to_remove_formula)):
                     # If we need to remove combination of clauses
                     if isinstance(to_remove_clause, sympy.Tuple):
-                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(self.get_clauses(And(*to_remove_clause)))
+                        new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(self.get_clauses(to_cnf(And(*to_remove_clause))))
+                        #new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - set(to_remove_clause)
                     # If we need to remove one clause at a time    
                     else:
                         new_remainders = self.get_clauses(to_cnf(And(*set_a_list))) - {to_remove_clause}
                     if not self.entailment(knowledge_base=new_remainders, query=phi):
-                        return list(new_remainders)
+                        if return_all is False:
+                            return list(new_remainders)
+                        else:
+                            if not list(new_remainders) in return_remainders:
+                                return_remainders.append(list(new_remainders))
 
-        return list()
+        return return_remainders
 
     def contraction(self, query):
-        remainders = self.remainders(set_a=self.knowledge_base, phi=query)
+        remainders = self.remainders(set_a_list=self.knowledge_base, phi=query)
         self.knowledge_base = remainders
 
     def revision(self, query, test=True):
@@ -227,6 +230,23 @@ class Agent:
         return self.entailment(knowledge_base=set(), query=biconditional)
 
 if __name__ == "__main__":
+    agent = Agent()
+    p,q,r,s,t = symbols('p q r s t')
+    agent.tell(p)
+    agent.tell(q)
+    agent.tell(p & q)
+    agent.tell(p | q)
+    agent.tell(p >> q)
+    print(agent.knowledge_base, "⊥ q:" ,  agent.remainders(agent.knowledge_base, q, return_all=True))
+
+    agent = Agent()
+    p,q,r,s,t = symbols('p q r s t')
+    #agent.revision((p|q) & (Not(r) | Not(s) | t))
+    #agent.revision((p|q|r) & (q|Not(r)|(s>>t)))
+    knowledge_base_ex = [to_cnf((p|q) & (Not(r) | Not(s) | t))]
+    query_ex = (p|q|r) & (q|Not(r)|(s>>t))
+    print("Does", knowledge_base_ex, "|=", query_ex, "?:", agent.entailment(knowledge_base=knowledge_base_ex, query=query_ex))
+
     agent = Agent()
     a, b, c = symbols('a b c')
     agent.revision(a | b >> c)
