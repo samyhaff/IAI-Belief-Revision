@@ -92,9 +92,9 @@ class Agent:
         remainders = self.remainders(set_a_list=self.knowledge_base, phi=query)
         self.knowledge_base = remainders
 
-    def revision(self, query, test=True):
+    def revision(self, query, test=True, verbose=True):
         original_knowledge_base = self.knowledge_base.copy()
-        print(self.name, 'is revising', original_knowledge_base, 'with', query)
+        if verbose: print(self.name, 'is revising', original_knowledge_base, 'with', query)
         # With this check, test_revision_success is not fulfilled
         #if self.is_consistent(query):
         #    self.contraction(Not(query))
@@ -102,11 +102,11 @@ class Agent:
         #    self.tell(query)
 
         self.contraction(Not(query))
-        print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
+        if verbose: print(self.name, '\'s new knowledge base after contraction:', self.knowledge_base)
         self.tell(query)
 
         revised_knowledge_base = self.knowledge_base.copy()
-        print(self.name, '\'s updated knowledge base:', revised_knowledge_base, "\n")
+        if verbose: print(self.name, '\'s updated knowledge base:', revised_knowledge_base, "\n")
 
         if test is True:
             #query = self.get_clauses(to_cnf(query))
@@ -196,7 +196,7 @@ class Agent:
                     for belief in original_knowledge_base:
                         agent_psi.tell(belief)
 
-                revision_result_psi = agent_psi.revision(psi, test=False) # To avoid infinite recursion
+                revision_result_psi = agent_psi.revision(psi, test=False, verbose=False) # To avoid infinite recursion
 
                 contracted_phi = to_cnf(And(*revision_result_phi), simplify=True)
                 contracted_psi = to_cnf(And(*revision_result_psi), simplify=True)
