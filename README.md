@@ -1,6 +1,9 @@
 # Belief Revision Agent
+Belief Revision Assignment as part of the Introduction To Artificial Intelligence course at Technical University of Denmark, A.Y. 2022-2023. 
 
-This project implements a belief revision agent that satisfies AGM postulates using propositional logic. The agent can add, revise, and query beliefs in its knowledge base. The code is written in Python and uses the Sympy library for logical expressions.
+This project implements a belief revision agent that satisfies AGM postulates using propositional logic. The agent can add, revise, and query beliefs in its knowledge base. The code is written in Python and uses the Sympy library for logical expressions. 
+A report explaining the work that has been done for this project is available [here](IAI_report_2_team_17.pdf).
+
 
 ## TODOs
 - Remove the possibility of running AGM postulate tests from the console.py (and keep only the part that uses the belief set passed through the parameters);
